@@ -135,7 +135,7 @@ class Diffusion:
 
     # Algorithm 2 (including returning all images)
     @torch.no_grad()
-    def sample(self, model, image_size, batch_size=16, channels=3, guidance_weight=0.3, y=None):
+    def sample(self, model, image_size, batch_size=16, channels=3, guidance_weight=0.3, class_labels=None):
         # TODO (2.2): Implement the full reverse diffusion loop from random noise to an image, iteratively ''reducing'' the noise in the generated image.
 
         # TODO (2.2): Return the generated images
@@ -150,7 +150,7 @@ class Diffusion:
             t = torch.full((batch_size,), i, device=self.device, dtype=torch.long)
             
             # 将 guidance_scale 传下去
-            img = self.p_sample(model, img, t, i, y=y, guidance_weight=guidance_weight)
+            img = self.p_sample(model, img, t, i, class_labels=class_labels, guidance_weight=guidance_weight) # type: ignore
 
         return img
         
@@ -175,7 +175,7 @@ class Diffusion:
         
         return x_t
 
-    def p_losses(self, denoise_model, x_zero, t, noise=None, loss_type="l1", y=None):
+    def p_losses(self, denoise_model, x_zero, t, noise=None, loss_type="l1", class_labels=None):
         # TODO (2.2): compute the input to the network using the forward diffusion process and predict the noise using the model; if noise is None, you will need to create a new noise vector, otherwise use the provided one.
 
         # 1. 如果没有提供噪声，则生成随机噪声 (epsilon)
@@ -188,8 +188,8 @@ class Diffusion:
 
         # 3. 使用模型预测噪声 (Predict noise)
         # 根据是否提供 y (条件) 来决定是否传入模型
-        if y is not None:
-            predicted_noise = denoise_model(x_t, t, y)
+        if class_labels is not None:
+            predicted_noise = denoise_model(x_t, t, class_labels)
         else:
             predicted_noise = denoise_model(x_t, t)
 
