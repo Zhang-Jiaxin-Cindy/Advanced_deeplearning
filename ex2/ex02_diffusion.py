@@ -100,7 +100,7 @@ class Diffusion:
         self.sqrt_betas = torch.sqrt(self.betas)
 
     @torch.no_grad()
-    def p_sample(self, model, x, t, t_index, y=None, guidance_weight=0.3):
+    def p_sample(self, model, x, t, t_index, class_labels=None, guidance_weight=0.3):
         # TODO (2.2): implement the reverse diffusion process of the model for (noisy) samples x and timesteps t. Note that x and t both have a batch dimension
 
         # Equation 11 in the paper
@@ -112,18 +112,18 @@ class Diffusion:
         else:
             z = torch.zeros_like(x)
 
-        if y is not None and self.num_classes is not None and guidance_weight > 0:
+        if class_labels is not None and self.num_classes is not None and guidance_weight > 0:
             # Conditional prediction
-            eps_cond = model(x, t, y)
+            eps_cond = model(x, t, class_labels)
             # Unconditional prediction (null token)
             null_token_idx = self.num_classes  # Assuming null is at index num_classes
-            null_labels = torch.full_like(y, null_token_idx)
+            null_labels = torch.full_like(class_labels, null_token_idx)
             eps_uncond = model(x, t, class_labels=null_labels)
 
             eps = (1 + guidance_weight) * eps_cond - guidance_weight * eps_uncond
         else:
             # Unconditional or no guidance
-            eps = model(x, t, y)
+            eps = model(x, t, class_labels)
 
         # TODO (2.2): The method should return the image at timestep t-1.
         x_t_min = (self.sqrt_alphas_inv[t_index] *
@@ -187,7 +187,7 @@ class Diffusion:
         x_t = self.q_sample(x_zero, t, noise)
 
         # 3. 使用模型预测噪声 (Predict noise)
-        # 根据是否提供 y (条件) 来决定是否传入模型
+      
         if class_labels is not None:
             predicted_noise = denoise_model(x_t, t, class_labels)
         else:
