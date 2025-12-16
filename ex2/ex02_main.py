@@ -160,7 +160,14 @@ def run(args):
     save_path = "./img"  # TODO: Adapt to your needs
     n_images = 8
     sample_and_save_images(n_images, diffusor, model, device, save_path)
-    torch.save(model.state_dict(), os.path.join("/proj/aimi-adl/models", args.run_name, f"ckpt.pt"))
+    save_dir = os.path.join(os.path.expanduser("~"), "models", args.run_name)
+    os.makedirs(save_dir, exist_ok=True)
+
+    torch.save(
+        model.state_dict(),
+        os.path.join(save_dir, "ckpt.pt")
+    )
+
 
 
 if __name__ == '__main__':
