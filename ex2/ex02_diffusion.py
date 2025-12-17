@@ -108,7 +108,7 @@ class Diffusion:
 
         # TODO (2.2): The method should return the image at timestep t-1.
         if t_index > 0:
-            z = torch.randn_like(x)
+            z = torch.randn_like(x) # random noise 
         else:
             z = torch.zeros_like(x)
 
@@ -117,7 +117,7 @@ class Diffusion:
             eps_cond = model(x, t, class_labels)
             # Unconditional prediction (null token)
             null_token_idx = self.num_classes  # Assuming null is at index num_classes
-            null_labels = torch.full_like(class_labels, null_token_idx)
+            null_labels = torch.full_like(class_labels, null_token_idx) 
             eps_uncond = model(x, t, class_labels=null_labels)
 
             eps = (1 + guidance_weight) * eps_cond - guidance_weight * eps_uncond
@@ -140,14 +140,13 @@ class Diffusion:
 
         # TODO (2.2): Return the generated images
         shape = (batch_size, channels, image_size, image_size)
-        img = torch.randn(shape, device=self.device)
+        img = torch.randn(shape, device=self.device) # standard normal distribution
 
         # 2. 迭代去噪: 从 T-1 循环到 0
-        # 使用 tqdm 可以显示进度条（如果不需要可以去掉）
         # for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
 
         for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
-            t = torch.full((batch_size,), i, device=self.device, dtype=torch.long)
+            t = torch.full((batch_size,), i, device=self.device, dtype=torch.long) # i is a scale 
             
             # 将 guidance_scale 传下去
             img = self.p_sample(model, img, t, i, class_labels=class_labels, guidance_weight=guidance_weight) # type: ignore
@@ -161,13 +160,11 @@ class Diffusion:
     def q_sample(self, x_zero, t, noise=None):
         # TODO (2.2): Implement the forward diffusion process using the beta-schedule defined in the constructor; if noise is None, you will need to create a new noise vector, otherwise use the provided one.
         if noise is None:
-            noise = torch.randn_like(x_zero)
+            noise = torch.randn_like(x_zero) # a noise from a normal distribution
             
         # 辅助函数：从预计算的 schedule 中提取当前 t 的值并 reshape
-        # 确保系数和 x_zero 在同一个 device
-
-
-        sqrt_alphas_cum = extract(self.sqrt_alphas_cum, t, x_zero.shape)
+    
+        sqrt_alphas_cum = extract(self.sqrt_alphas_cum, t, x_zero.shape) # (Batch_Size,) add 
         sqrt_1m_alphas_cum = extract(self.sqrt_1m_alphas_cum, t, x_zero.shape)
         
         # x_t = sqrt(alpha_bar) * x_0 + sqrt(1 - alpha_bar) * epsilon
@@ -180,13 +177,10 @@ class Diffusion:
 
         # 1. 如果没有提供噪声，则生成随机噪声 (epsilon)
         if noise is None:
-            noise = torch.randn_like(x_zero)
+            noise = torch.randn_like(x_zero) # we create noise 
 
-        # 2. 只有前向过程 q_sample 得到 x_t (Noisy Image)
-        # Put Noise on the image
-        x_t = self.q_sample(x_zero, t, noise)
-
-        # 3. 使用模型预测噪声 (Predict noise)
+        
+        x_t = self.q_sample(x_zero, t, noise) # train sample 
       
         if class_labels is not None:
             predicted_noise = denoise_model(x_t, t, class_labels)

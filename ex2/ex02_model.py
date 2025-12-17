@@ -39,7 +39,7 @@ class WeightStandardizedConv2d(nn.Conv2d):
         weight = self.weight
         mean = reduce(weight, "o ... -> o 1 1 1", "mean")
         var = reduce(weight, "o ... -> o 1 1 1", partial(torch.var, unbiased=False))
-        normalized_weight = (weight - mean) * (var + eps).rsqrt()
+        normalized_weight = (weight - mean) * (var + eps).rsqrt() #the reciprocal square root
 
         return F.conv2d(
             x,
@@ -153,8 +153,8 @@ class LinearAttention(nn.Module):
             lambda t: rearrange(t, "b (h c) x y -> b h c (x y)", h=self.heads), qkv
         )
 
-        q = q.softmax(dim=-2)
-        k = k.softmax(dim=-1)
+        q = q.softmax(dim=-2) # for Q
+        k = k.softmax(dim=-1) # for k
 
         q = q * self.scale
         context = torch.einsum("b h d n, b h e n -> b h d e", k, v)
@@ -165,6 +165,7 @@ class LinearAttention(nn.Module):
 
 
 # Wu et al.: https://arxiv.org/abs/1803.08494
+# stability
 class PreNorm(nn.Module):
     def __init__(self, dim, fn):
         super().__init__()
@@ -291,7 +292,9 @@ class Unet(nn.Module):
 
         class_emb = None
         
-        if self.class_emb is not None:  
+        if self.class_emb is not None:
+            if class_labels is not None:
+                class_labels = class_labels.to(x.device)
             if self.training:
                 assert class_labels is not None, "Training requires class_labels"
                 if self.p_uncond is not None:

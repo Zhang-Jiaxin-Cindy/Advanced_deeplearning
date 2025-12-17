@@ -1,7 +1,7 @@
 from torch import nn
 from inspect import isfunction
 from einops.layers.torch import Rearrange
-
+import torch
 
 def exists(x):
     return x is not None
@@ -42,11 +42,13 @@ def Downsample(dim, dim_out=None):
     # No More Strided Convolutions or Pooling
     return nn.Sequential(
         Rearrange("b c (h p1) (w p2) -> b (c p1 p2) h w", p1=2, p2=2),
-        nn.Conv2d(dim * 4, default(dim_out, dim), 1),
+        nn.Conv2d(dim * 4, default(dim_out, dim), 1), # type: ignore
     )
 
 
 def extract(a, t, x_shape):
     batch_size = t.shape[0]
-    out = a.gather(-1, t.cpu())
-    return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
+    t = t.to(device=a.device, dtype=torch.long) # a is a 1-D tensor
+    out = a.gather(-1, t) # 
+    
+    return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device) # 告诉补充多少个维度 add

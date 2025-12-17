@@ -10,7 +10,7 @@ from pathlib import Path
 import os
 import matplotlib.pyplot as plt
 from ex02_model import Unet
-from ex02_diffusion import Diffusion, linear_beta_schedule, plot_beta_schedulers
+from ex02_diffusion import Diffusion, linear_beta_schedule, plot_beta_schedulers, cosine_beta_schedule
 from torchvision.utils import save_image, make_grid
 from PIL import Image
 import argparse
@@ -19,13 +19,13 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a neural network to diffuse images')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--timesteps', type=int, default=100, help='number of timesteps for diffusion model (default: 100)')
-    parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train (default: 5)')
+    parser.add_argument('--timesteps', type=int, default=1000, help='number of timesteps for diffusion model (default: 100)')
+    parser.add_argument('--epochs', type=int, default=50, help='number of epochs to train (default: 5)')
     parser.add_argument('--lr', type=float, default=0.003, help='learning rate (default: 0.003)')
     # parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum (default: 0.9)')
     parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
     # parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
-    parser.add_argument('--log_interval', type=int, default=100, help='how many batches to wait before logging training status')
+    parser.add_argument('--log_interval', type=int, default=1000, help='how many batches to wait before logging training status')
     parser.add_argument('--save_model', action='store_true', default=False, help='For Saving the current Model')
     parser.add_argument('--run_name', type=str, default="DDPM")
     parser.add_argument('--dry_run', action='store_true', default=False, help='quickly check a single pass')
@@ -98,7 +98,7 @@ def train(model, trainloader, optimizer, diffusor, epoch, device, args):
 
         # Algorithm 1 line 3: sample t uniformly for every example in the batch
         t = torch.randint(0, timesteps, (len(images),), device=device).long()
-        loss = diffusor.p_losses(model, images, t, loss_type="l2")
+        loss = diffusor.p_losses(model, images, t, loss_type="l2", class_labels=labels)
 
         loss.backward()
         optimizer.step()
@@ -122,10 +122,16 @@ def run(args):
     batch_size = args.batch_size
     device = "cuda" if not args.no_cuda and torch.cuda.is_available() else "cpu"
 
-    model = Unet(dim=image_size, channels=channels, dim_mults=(1, 2, 4,)).to(device)
+    model = Unet(dim=64, channels=channels, 
+                 dim_mults=(1, 2, 4,), 
+                 class_free_guidance=True, 
+                 num_classes=10,
+                 p_uncond=0.1).to(device)
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
-    my_scheduler = lambda x: linear_beta_schedule(0.0001, 0.02, x)
+    #my_scheduler = lambda x: linear_beta_schedule(0.0001, 0.02, x)
+    my_scheduler = lambda x: cosine_beta_schedule(x, 0.001)
+
     diffusor = Diffusion(timesteps, my_scheduler, image_size, device)
 
     # define image transformations (e.g. using torchvision)
